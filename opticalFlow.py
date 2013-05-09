@@ -123,7 +123,9 @@ def main():
 	#figure()
 	#gray()   
 	b_ver1 = (60,91)
-	b_ver2 = (148,315) 
+	b_ver2 = (148,315)  
+	w = (b_ver2[0] - b_ver1[0]) 
+	h = (b_ver2[1] - b_ver1[1])
 	for i,p in enumerate(l1):
 		center = p[:2] 
 		if center[0] > 60 and center[0] < 148 and center[1] > 91 and center[1] < 315:
@@ -133,6 +135,8 @@ def main():
 	
 	startIndex = 10
 	writer = cv.CreateVideoWriter("myTrack.avi",cv.CV_FOURCC('M','J','P','G'),60,cv.GetSize (cv.LoadImage(path+files[startIndex])),1)
+	
+	initalIndicator = 0
 	
 	while (startIndex<=2900):
 		seq = [cv.LoadImage(path+files[startIndex]),
@@ -176,10 +180,26 @@ def main():
 		cm_y = sum(p_y)/sum(weight)
 		
 		points = [point for point in points if mynorm(point,(cm_x,cm_y)) <= 0.7*mynorm(b_ver1,b_ver2)]
+			  	  	
+		"""
+			detect scale change by finding the density of points
+		"""                                                     
+		densityIndicator = sum([mynorm(point,(cm_x,cm_y)) for point in points])/len(points)
+		if startIndex == 10:
+			initalIndicator = densityIndicator
+			
+		print "Scale indicator ", densityIndicator/initalIndicator  
 		
-		old_cm = ((b_ver1[0]+b_ver2[0])/2,(b_ver1[1]+b_ver2[1])/2)
-		b_ver1 = (int(b_ver1[0]+cm_x-old_cm[0]), int(b_ver1[1]+cm_y-old_cm[1]))
-		b_ver2 = (int(b_ver2[0]+cm_x-old_cm[0]), int(b_ver2[1]+cm_y-old_cm[1]))		  	  	
+		
+		""" Calculate new center of mass """
+		# old_cm = ((b_ver1[0]+b_ver2[0])/2,(b_ver1[1]+b_ver2[1])/2)
+		# b_ver1 = (int(b_ver1[0]+cm_x-old_cm[0]), int(b_ver1[1]+cm_y-old_cm[1]))
+		# b_ver2 = (int(b_ver2[0]+cm_x-old_cm[0]), int(b_ver2[1]+cm_y-old_cm[1]))
+		new_w = w*densityIndicator/initalIndicator
+		new_h = h*densityIndicator/initalIndicator
+		b_ver1 = (int(cm_x-new_w/2), int(cm_y-new_h/2))
+		b_ver2 = (int(cm_x+new_w/2), int(cm_y+new_h/2))
+		
 		# points_fb, status2, errors_fb,= cv.CalcOpticalFlowPyrLK (
 		#                     newFrameImageGS_32F2, 
 		#                     newFrameImageGS_32F1, 
@@ -210,7 +230,7 @@ def main():
 	   	#refine_l,points = filterPts(refine_l,points,similarity,status1,fb_error)
 		
 		b = time()
-		print "Time for calculating optical flow: ",b - a
+		#print "Time for calculating optical flow: ",b - a
 	   
 		#a =  time()
 		#fp = make_homog(transpose(array(refine_l)))
